@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+ <title>Possible situations</title>
+</head>
+<body>
+ <h2>Enter properties for each situation</h2>
+ <form action="/save_situations?numSituation={{.}}" method="post">
+ {{ $numSituation := . }}
+ {{ $seq := makeSlice $numSituation}}
+ 
+ {{range $i, $ := $seq}}
+     <h3>Possible situation {{$i}}</h3>
+     <label for="name_{{$i}}">Name:</label>
+     <input type="text" name="name_{{$i}}" required>
+
+     <label for="loses_{{$i}}">Losses, damage (thousand tenge):</label>
+     <input type="text" name="loses_{{$i}}" required>
+
+     <label for="probability_{{$i}}">Probability (per year):</label>
+     <input type="text" name="probability_{{$i}}" required>
+     <br><br>
+ {{end}}
+ 
+  <button type="submit">Save</button>
+ </form>
+</body>
+</html>

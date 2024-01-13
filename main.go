@@ -20,7 +20,18 @@ type Asset struct {
 	TotalAsset      string
 	WeightOfAsset   string
 	TAV             string
+	Category        string
+	Assumption      string
 }
+type Situation struct {
+	Name        string
+	Loses       string
+	Probability string
+}
+
+var (
+	classification map[int]string
+)
 
 var db *sql.DB
 
@@ -82,10 +93,15 @@ func assetsHandler(w http.ResponseWriter, r *http.Request) {
 }
 func saveAssetsHandler(w http.ResponseWriter, r *http.Request) {
 	numAssets := r.FormValue("numAssets")
+	
 	numAssetsInt := 0
+
+
+	
 	fmt.Sscanf(numAssets, "%d", &numAssetsInt)
 
 	var assets []Asset
+	
 
 	for i := 0; i < numAssetsInt; i++ {
 		name := r.FormValue(fmt.Sprintf("name_%d", i))
@@ -93,23 +109,58 @@ func saveAssetsHandler(w http.ResponseWriter, r *http.Request) {
 		integrity := r.FormValue(fmt.Sprintf("integrity_%d", i))
 		availability := r.FormValue(fmt.Sprintf("availability_%d", i))
 		weight := r.FormValue(fmt.Sprintf("weight_%d", i))
-		
-		totalAsset := confidentiality + integrity + availability
-		totalAssetInt, _ := strconv.Atoi(totalAsset)
-		weightInt, _ := strconv.Atoi(weight)
-		tav := strconv.Itoa(totalAssetInt * weightInt)
+
+		confInt, err := strconv.Atoi(confidentiality)
+		if err != nil {
+			fmt.Println("can't convert confidentiality")
+			log.Fatal(err)
+		}
+		integrInt, err := strconv.Atoi(integrity)
+		if err != nil {
+			fmt.Println("can't convert integrity")
+			log.Fatal(err)
+		}
+		availInt, err := strconv.Atoi(availability)
+		if err != nil {
+			fmt.Println("can't convert availability")
+			log.Fatal(err)
+		}
+		weightInt, err := strconv.Atoi(weight)
+		if err != nil {
+			fmt.Println("can't convert weight")
+			log.Fatal(err)
+		}
+
+		totalAsset := confInt + integrInt + availInt
+		tav := totalAsset * weightInt
+		category := "0"
+		assumption := "no assumption"
+		if tav >= 20 && tav <= 27 {
+			category = "1"
+			assumption = "require very serious and more attention"
+		} else if tav >= 12 && tav <= 18 {
+			category = "2"
+			assumption = "require serious attention"
+		} else if tav <= 10 {
+			category = "3"
+			assumption = "require less attention"
+		}
+
 		asset := Asset{
 			Name:            name,
 			Confidentiality: confidentiality,
 			Integrity:       integrity,
 			Availability:    availability,
-			TotalAsset:      totalAsset,
+			TotalAsset:      strconv.Itoa(totalAsset),
 			WeightOfAsset:   weight,
-			TAV:             tav,
+			TAV:             strconv.Itoa(tav),
+			Category:        category,
+			Assumption:      assumption,
 		}
 
 		assets = append(assets, asset)
 	}
+	
 
 	// Log assets before saving
 	log.Println("Assets before saving:", assets)
@@ -121,7 +172,7 @@ func saveAssetsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Assets after saving:", assets)
 
 	// Display the saved assets
-	displayAssets(w, assets)
+	displayAssets(w, nil, assets)
 }
 
 func saveAssetsToDatabase(assets []Asset) {
@@ -138,7 +189,7 @@ func saveAssetsToDatabase(assets []Asset) {
 	}
 }
 
-func displayAssets(w http.ResponseWriter, assets []Asset) {
+func displayAssets(w http.ResponseWriter, r *http.Request, assets []Asset) {
 	log.Println("Received assets:", assets)
 
 	tmpl, err := template.ParseFiles("templates/all_assets.html")
@@ -146,6 +197,5 @@ func displayAssets(w http.ResponseWriter, assets []Asset) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 	tmpl.Execute(w, assets)
 }

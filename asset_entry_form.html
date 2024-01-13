@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+ <title>Asset Properties</title>
+</head>
+<body>
+ <h2>Enter properties for each asset</h2>
+ <form action="/save_assets?numAssets={{.}}" method="post">
+ {{ $numAssets := . }}
+ {{ $seq := makeSlice $numAssets }}
+ 
+ {{range $i, $ := $seq}}
+     <h3>Asset {{$i}}</h3>
+     <label for="name_{{$i}}">Name:</label>
+     <input type="text" name="name_{{$i}}" required>
+     <label for="confidentiality_{{$i}}">Confidentiality:</label>
+     <input type="text" name="confidentiality_{{$i}}" required>
+     <label for="integrity_{{$i}}">Integrity:</label>
+     <input type="text" name="integrity_{{$i}}" required>
+     <label for="availability_{{$i}}">Availability:</label>
+     <input type="text" name="availability_{{$i}}" required>
+     <label for="weight_{{$i}}">Weight:</label>
+     <input type="text" name="weight_{{$i}}" required>
+     <br><br>
+ {{end}}
+ 
+  <button type="submit">Save</button>
+ </form>
+</body>
+</html>

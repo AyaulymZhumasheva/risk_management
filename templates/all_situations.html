@@ -5,7 +5,25 @@
     </head>
     <body>
      <h2>Displaying Situations</h2>
-     <p>Total Situation Value: {{.TotalSituationValue}}</p>
-     
+     {{range .Situations}}
+     <p>
+         Name: {{.Name}}<br>
+         Loses: {{.Loses}}<br>
+         Probability: {{.Probability}}<br>
+     </p>
+ {{end}}
+     <p> Average losses from risk: {{.TotalSituationValue}}</p>
+     <p> Variance of the result: {{.Variance}}</p>
+     <p> RMS loss: {{.Loss}}</p>
+     <p> Value specified by the condition: {{.ConditionValue}}</p>
+     <p> Integral risk assessment: {{.InregralRisk}}</p> 
+
+     <h2>Displaying Situations after updating </h2>
+
+     <p> Average losses from risk: {{.TotalSituationValueUpd}}</p>
+     <p> Variance of the result: {{.VarianceUpd}}</p>
+     <p> RMS loss: {{.LossUpd}}</p>
+     <p> Value specified by the condition: {{.ConditionValue}}</p>
+     <p> Integral risk assessment: {{.InregralRiskUpd}}</p> 
     </body>
     </html>

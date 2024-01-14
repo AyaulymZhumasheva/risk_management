@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 	"text/template"
@@ -176,16 +177,8 @@ func SaveAssetsHandler(w http.ResponseWriter, r *http.Request) {
 		assets = append(assets, asset)
 	}
 
-	// Log assets before saving
-	log.Println("Assets before saving:", assets)
-
-	// Save assets to the database
 	SaveAssetsToDatabase(assets)
 
-	// Log assets after saving
-	log.Println("Assets after saving:", assets)
-
-	// Display the saved assets
 	DisplayAssets(w, nil, assets)
 }
 
@@ -197,59 +190,108 @@ func SaveSituationsHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Sscanf(numSituations, "%d", &numSituationsInt)
 
 	var situations []Situation
-	var totalSituationValue int
+	var totalSituationValue, variance, loss, inregralRisk, conditionValue float64
+	var totalSituationValueUpd, varianceUpd, inregralRiskUpd, lossUpd float64
+	var probabilityInt float64
+	var losesInt int
+	var err error
 	for i := 0; i < numSituationsInt; i++ {
 		name := r.FormValue(fmt.Sprintf("name_%d", i))
 		loses := r.FormValue(fmt.Sprintf("loses_%d", i))
 		probability := r.FormValue(fmt.Sprintf("probability_%d", i))
 
-		losesInt, err := strconv.Atoi(loses)
+		losesInt, err = strconv.Atoi(loses)
 		if err != nil {
 			fmt.Println("can't convert loses to integer")
 			log.Fatal(err)
 		}
 
-		probabilityInt, err := strconv.Atoi(probability)
+		probabilityInt, err = strconv.ParseFloat(probability, 64)
 		if err != nil {
 			fmt.Println("can't convert probability to integer")
 			log.Fatal(err)
 		}
 
-		product := losesInt * probabilityInt
+		product := float64(losesInt) * probabilityInt
+		productUpd:=float64(losesInt+100) * (probabilityInt/10.0)
 		totalSituationValue += product
+		totalSituationValueUpd+=productUpd
 		situation := Situation{
 			Name:        name,
 			Loses:       loses,
 			Probability: probability,
 		}
 
-
 		situations = append(situations, situation)
 	}
+
+	for _, s := range situations {
+		loses, _ := strconv.Atoi(s.Loses)
+		prob, _ := strconv.ParseFloat(s.Probability, 64)
+		variance += (float64(loses) - totalSituationValue) * (float64(loses) - totalSituationValue) * prob
+	}
+	for _, s := range situations {
+		loses, _ := strconv.Atoi(s.Loses)
+		prob, _ := strconv.ParseFloat(s.Probability, 64)
+		varianceUpd += (float64(loses+100) - totalSituationValueUpd) * (float64(loses+100) - totalSituationValueUpd) * (prob/10.0)
+	}
+
+	loss = math.Sqrt(variance)
+	lossUpd=math.Sqrt(varianceUpd)
+
+	conditionValue=0.3
+	inregralRisk = conditionValue*totalSituationValue+(1-conditionValue)*loss
+	inregralRiskUpd=conditionValue*totalSituationValueUpd+(1-conditionValue)*loss
+
 	tmpl, err := template.ParseFiles("templates/all_situations.html")
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	data := struct {
-        Situations            []Situation
-        TotalSituationValue   int
-    }{
-        Situations:            situations,
-        TotalSituationValue:   totalSituationValue,
-    }
+		Situations          []Situation
+		TotalSituationValue float64
+		Variance            float64
+		Loss				float64
+		ConditionValue		float64
+		InregralRisk		float64
+		TotalSituationValueUpd, VarianceUpd, LossUpd, InregralRiskUpd  float64
+	}{
+		Situations:          situations,
+		TotalSituationValue: totalSituationValue,
+		Variance:            variance,
+		Loss: 				 loss,
+		ConditionValue:      conditionValue,
+		InregralRisk: 		 inregralRisk,
 
-    tmpl.Execute(w, data)
-	
+		TotalSituationValueUpd: totalSituationValueUpd, 
+		VarianceUpd: varianceUpd, 
+		LossUpd: lossUpd, 
+		InregralRiskUpd: inregralRiskUpd,
 
-	
-	//SaveAssetsToDatabase(situations)
+	}
 
+	tmpl.Execute(w, data)
 
+	//SaveSituationsToDatabase(data)
 
-	
-//	DisplayAssets(w, nil, situations)
+	//DisplayAssets(w, nil, situations)
 }
+
+// func SaveSituationsToDatabase(data []Asset) {
+// 	for _, asset := range assets {
+// 		_, err := db.Exec(
+// 			"INSERT INTO assets_risk (name, confidentiality, integrity, availability, total_asset, weight_of_asset, tav) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+// 			asset.Name, asset.Confidentiality, asset.Integrity, asset.Availability, asset.TotalAsset, asset.WeightOfAsset, asset.TAV,
+// 		)
+// 		if err != nil {
+// 			log.Println("Error inserting asset:", err)
+// 		} else {
+// 			log.Println("Asset inserted successfully:", asset)
+// 		}
+// 	}
+
+// }
 
 func SaveAssetsToDatabase(assets []Asset) {
 	for _, asset := range assets {
@@ -263,6 +305,7 @@ func SaveAssetsToDatabase(assets []Asset) {
 			log.Println("Asset inserted successfully:", asset)
 		}
 	}
+
 }
 
 func DisplayAssets(w http.ResponseWriter, r *http.Request, assets []Asset) {
